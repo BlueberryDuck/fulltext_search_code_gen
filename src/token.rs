@@ -19,17 +19,6 @@ fn to_float(lex: &mut Lexer<Token>) -> Option<f64> {
 
 #[derive(Debug, Clone, Logos, PartialEq)]
 pub enum Token {
-    #[token("fn")]
-    Fn,
-    #[token("let")]
-    Let,
-    #[token("if")]
-    If,
-    #[token("else")]
-    Else,
-    #[token("while")]
-    While,
-
     #[regex(r"[a-zA-Z_?]+", to_string)]
     Identifier(String),
     #[regex(r"[0-9]+(\.[0-9]+)?", to_float)]
@@ -41,26 +30,20 @@ pub enum Token {
     LeftParen,
     #[token(")")]
     RightParen,
-    #[token("{")]
-    LeftBrace,
-    #[token("}")]
-    RightBrace,
 
-    #[token("+")]
-    Plus,
+    #[token("!")]
+    Bang,
     #[token("-")]
     Minus,
-    #[token("*")]
-    Asterisk,
-    #[token("/")]
-    Slash,
 
     #[token("=")]
-    Assign,
+    Equals,
 
-    #[token("&&")]
+    #[token("&")]
     And,
-    #[token("||")]
+    #[token("+")]
+    Plus,
+    #[token("|")]
     Or,
 
     #[token("true")]
@@ -68,8 +51,6 @@ pub enum Token {
     #[token("false")]
     False,
 
-    #[token(",")]
-    Comma,
     #[token(":")]
     Colon,
 
@@ -87,78 +68,5 @@ impl Into<String> for Token {
             Token::String(s) => s,
             _ => unreachable!(),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_can_recognize_reserved_keywords() {
-        let mut lexer = Token::lexer("fn let true false if else while");
-        assert_eq!(lexer.next(), Some(Token::Fn));
-        assert_eq!(lexer.next(), Some(Token::Let));
-        assert_eq!(lexer.next(), Some(Token::True));
-        assert_eq!(lexer.next(), Some(Token::False));
-        assert_eq!(lexer.next(), Some(Token::If));
-        assert_eq!(lexer.next(), Some(Token::Else));
-        assert_eq!(lexer.next(), Some(Token::While));
-    }
-
-    #[test]
-    fn it_can_recognize_identifiers() {
-        let mut lexer = Token::lexer("hello_world HelloWorld hello_world? helloWorld");
-        assert_eq!(
-            lexer.next(),
-            Some(Token::Identifier("hello_world".to_owned()))
-        );
-        assert_eq!(
-            lexer.next(),
-            Some(Token::Identifier("HelloWorld".to_owned()))
-        );
-        assert_eq!(
-            lexer.next(),
-            Some(Token::Identifier("hello_world?".to_owned()))
-        );
-        assert_eq!(
-            lexer.next(),
-            Some(Token::Identifier("helloWorld".to_owned()))
-        );
-    }
-
-    #[test]
-    fn it_can_recognize_numbers() {
-        let mut lexer = Token::lexer("12345 6789.01");
-        assert_eq!(lexer.next(), Some(Token::Number(12345.0)));
-        assert_eq!(lexer.next(), Some(Token::Number(6789.01)));
-    }
-
-    #[test]
-    fn it_can_recognize_strings() {
-        let mut lexer = Token::lexer(r##""testing" "testing with \"" "testing \n""##);
-        assert_eq!(lexer.next(), Some(Token::String(r##"testing"##.to_owned())));
-        assert_eq!(
-            lexer.next(),
-            Some(Token::String(r##"testing with \""##.to_owned()))
-        );
-        assert_eq!(
-            lexer.next(),
-            Some(Token::String(r##"testing \n"##.to_owned()))
-        );
-    }
-
-    #[test]
-    fn it_can_recognize_symbols() {
-        let mut lexer = Token::lexer("( ) { } + - * / =");
-        assert_eq!(lexer.next(), Some(Token::LeftParen));
-        assert_eq!(lexer.next(), Some(Token::RightParen));
-        assert_eq!(lexer.next(), Some(Token::LeftBrace));
-        assert_eq!(lexer.next(), Some(Token::RightBrace));
-        assert_eq!(lexer.next(), Some(Token::Plus));
-        assert_eq!(lexer.next(), Some(Token::Minus));
-        assert_eq!(lexer.next(), Some(Token::Asterisk));
-        assert_eq!(lexer.next(), Some(Token::Slash));
-        assert_eq!(lexer.next(), Some(Token::Assign));
     }
 }
