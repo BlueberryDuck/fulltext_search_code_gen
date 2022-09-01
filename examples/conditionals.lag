@@ -1,1 +1,1 @@
-(true | (false | true) | false) & true
+@contains :-(false & true): @freetext :true:

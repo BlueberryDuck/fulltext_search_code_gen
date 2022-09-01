@@ -51,6 +51,8 @@ pub enum Token {
     #[token("false")]
     False,
 
+    #[token("@")]
+    At,
     #[token(":")]
     Colon,
 

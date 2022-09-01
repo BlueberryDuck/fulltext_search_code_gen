@@ -18,10 +18,10 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ParseError> {
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
-    /* Statement, */
-    Equals,
+    Statement,
     Or,
     And,
+    Equals,
     Not,
     Prefix,
     Group,
@@ -35,6 +35,7 @@ impl Precedence {
             Token::Or => Self::Or,
             Token::LeftParen => Self::Group,
             Token::Equals => Self::Equals,
+            Token::At => Self::Statement,
             _ => Self::Lowest,
         }
     }
@@ -95,6 +96,7 @@ impl<'p> Parser<'p> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.current {
+            Token::At => self.parse_function(),
             _ => Ok(Statement::Expression {
                 expression: self.parse_expression(Precedence::Lowest)?,
             }),
@@ -103,6 +105,13 @@ impl<'p> Parser<'p> {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
         let mut expr: Expression = match self.current.clone() {
+            Token::At => {
+                let (name, search) = match self.parse_function()? {
+                    Statement::Function { name, search, .. } => (name, search),
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Function(name, Box::new(search))
+            }
             Token::String(s) => {
                 self.expect_token_and_read(Token::String("".to_string()))?;
                 Expression::String(s.to_string())
@@ -123,49 +132,30 @@ impl<'p> Parser<'p> {
                 self.expect_identifier_and_read()?;
                 Expression::Identifier(s)
             }
-            t @ Token::Minus => {
+            t @ Token::Minus | t @ Token::Bang => {
                 self.expect_token_and_read(t.clone())?;
                 Expression::Prefix(
                     Operator::token(t),
-                    self.parse_expression(Precedence::Prefix)?.boxed(),
+                    Box::new(self.parse_expression(Precedence::Prefix)?),
                 )
             }
             Token::LeftParen => {
-                self.expect_token_and_read(Token::LeftParen)?;
-                let group_expression = self.parse_expression(Precedence::Lowest)?;
-                self.expect_token_and_read(Token::RightParen)?;
-                Expression::Group(group_expression.boxed())
+                let group_expression = match self.parse_group()? {
+                    Statement::Group { expression } => expression,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                group_expression
             }
             _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
         };
         while !self.current_is(Token::EoF) && precedence < Precedence::token(self.current.clone()) {
-            if let Some(expression) = self.parse_postfix_expression(expr.clone())? {
-                expr = expression;
-            } else if let Some(expression) = self.parse_infix_expression(expr.clone())? {
+            if let Some(expression) = self.parse_infix_expression(expr.clone())? {
                 expr = expression
             } else {
                 break;
             }
         }
         Ok(expr)
-    }
-
-    fn parse_postfix_expression(
-        &mut self,
-        expr: Expression,
-    ) -> Result<Option<Expression>, ParseError> {
-        Ok(match self.current {
-            Token::LeftParen => {
-                self.expect_token_and_read(Token::LeftParen)?;
-                let mut args = Vec::new();
-                while !self.current_is(Token::RightParen) {
-                    args.push(self.parse_expression(Precedence::Lowest)?);
-                }
-                self.expect_token_and_read(Token::RightParen)?;
-                Some(Expression::Call(Box::new(expr), args))
-            }
-            _ => None,
-        })
     }
 
     fn parse_infix_expression(
@@ -191,10 +181,28 @@ impl<'p> Parser<'p> {
             _ => None,
         })
     }
+
+    fn parse_function(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::At)?;
+        let name: Identifier = self.expect_identifier_and_read()?.into();
+        self.expect_token_and_read(Token::Colon)?;
+        let search: Expression = self.parse_expression(Precedence::Statement)?;
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Function { name, search })
+    }
+
+    fn parse_group(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::LeftParen)?;
+        let expression = self.parse_expression(Precedence::Statement)?;
+        self.expect_token_and_read(Token::RightParen)?;
+        Ok(Statement::Group { expression })
+    }
 }
 
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("Unexpected token {0:?}.")]
     UnexpectedToken(Token),
+    #[error("Entered unreachable code.")]
+    Unreachable,
 }
