@@ -96,7 +96,6 @@ impl<'p> Parser<'p> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.current {
-            Token::At => self.parse_function(),
             _ => Ok(Statement::Expression {
                 expression: self.parse_expression(Precedence::Lowest)?,
             }),
