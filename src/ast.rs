@@ -22,7 +22,6 @@ pub enum Expression {
     Exact(String),
     Bool(bool),
     Identifier(Identifier),
-    Assign(Box<Expression>, Box<Expression>),
     Infix(Box<Expression>, Operator, Box<Expression>),
     Prefix(Operator, Box<Expression>),
     Function(Identifier, Box<Expression>),

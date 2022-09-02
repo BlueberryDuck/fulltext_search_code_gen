@@ -19,7 +19,7 @@ fn to_float(lex: &mut Lexer<Token>) -> Option<f64> {
 
 #[derive(Debug, Clone, Logos, PartialEq)]
 pub enum Token {
-    #[regex(r"[a-zA-Z_?]+", to_string)]
+    #[regex(r"[a-zA-Zß?üÜöÖäÄ,;._<>´`#§$%/\\=€]+", to_string)]
     Identifier(String),
     #[regex(r"[0-9]+(\.[0-9]+)?", to_float)]
     Number(f64),
@@ -35,9 +35,6 @@ pub enum Token {
     Bang,
     #[token("-")]
     Minus,
-
-    #[token("=")]
-    Equals,
 
     #[token("&")]
     And,

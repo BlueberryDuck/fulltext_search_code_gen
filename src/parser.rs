@@ -21,7 +21,6 @@ enum Precedence {
     Statement,
     Or,
     And,
-    Equals,
     Not,
     Prefix,
     Group,
@@ -34,7 +33,6 @@ impl Precedence {
             Token::Plus | Token::And | Token::Identifier(..) => Self::And,
             Token::Or => Self::Or,
             Token::LeftParen => Self::Group,
-            Token::Equals => Self::Equals,
             Token::At => Self::Statement,
             _ => Self::Lowest,
         }
@@ -186,11 +184,6 @@ impl<'p> Parser<'p> {
                     Operator::token(token),
                     Box::new(sec_expr),
                 ))
-            }
-            Token::Equals => {
-                self.read();
-                let sec_expr = self.parse_expression(Precedence::Lowest)?;
-                Some(Expression::Assign(Box::new(expr), Box::new(sec_expr)))
             }
             _ => None,
         })
