@@ -31,7 +31,7 @@ impl Precedence {
     fn token(token: Token) -> Self {
         match token {
             Token::Bang | Token::Minus => Self::Not,
-            Token::Plus | Token::And => Self::And,
+            Token::Plus | Token::And | Token::Identifier(..) => Self::And,
             Token::Or => Self::Or,
             Token::LeftParen => Self::Group,
             Token::Equals => Self::Equals,
@@ -113,11 +113,7 @@ impl<'p> Parser<'p> {
             }
             Token::String(s) => {
                 self.expect_token_and_read(Token::String("".to_string()))?;
-                Expression::String(s.to_string())
-            }
-            Token::Number(n) => {
-                self.expect_token_and_read(Token::Number(0.0))?;
-                Expression::Number(n)
+                Expression::Exact(s.to_string())
             }
             Token::True => {
                 self.expect_token_and_read(Token::True)?;
@@ -148,13 +144,32 @@ impl<'p> Parser<'p> {
             _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
         };
         while !self.current_is(Token::EoF) && precedence < Precedence::token(self.current.clone()) {
-            if let Some(expression) = self.parse_infix_expression(expr.clone())? {
+            if let Some(expression) = self.parse_postfix_expression(expr.clone())? {
+                expr = expression;
+            } else if let Some(expression) = self.parse_infix_expression(expr.clone())? {
                 expr = expression
             } else {
                 break;
             }
         }
         Ok(expr)
+    }
+
+    fn parse_postfix_expression(
+        &mut self,
+        expr: Expression,
+    ) -> Result<Option<Expression>, ParseError> {
+        Ok(match self.current {
+            Token::Minus | Token::Bang | Token::Identifier(..) => {
+                let sec_expr = self.parse_expression(Precedence::And)?;
+                Some(Expression::Infix(
+                    Box::new(expr),
+                    Operator::And,
+                    Box::new(sec_expr),
+                ))
+            }
+            _ => None,
+        })
     }
 
     fn parse_infix_expression(

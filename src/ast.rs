@@ -19,8 +19,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    String(String),
-    Number(f64),
+    Exact(String),
     Bool(bool),
     Identifier(Identifier),
     Assign(Box<Expression>, Box<Expression>),
