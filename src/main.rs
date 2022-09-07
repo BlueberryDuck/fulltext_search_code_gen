@@ -2,6 +2,7 @@ use std::env::args;
 use std::fs::read_to_string;
 
 mod ast;
+mod generator;
 mod parser;
 mod token;
 
