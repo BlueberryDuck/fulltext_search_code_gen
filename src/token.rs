@@ -1,6 +1,6 @@
 use logos::{Lexer, Logos};
 
-pub fn generate(input: &str) -> Vec<Token> {
+pub fn lex(input: &str) -> Vec<Token> {
     Token::lexer(input).collect()
 }
 

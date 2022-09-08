@@ -15,6 +15,7 @@ pub enum Statement {
     Expression {
         expression: Expression,
     },
+    EoF,
 }
 
 #[derive(Debug, Clone, PartialEq)]
