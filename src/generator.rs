@@ -1,17 +1,17 @@
 use std::slice::Iter;
 use thiserror::Error;
 
-use crate::ast::{Expression, Statement};
-use crate::token::Token;
+use crate::ast::{Expression, Operator, Statement};
 
-pub fn generate(program: Vec<Statement>) -> Result<String, GenerateError> {
-    let mut generator = Generator::new(program.iter());
+pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
+    let mut generator = Generator::new(ast.iter());
     generator.write();
     generator.write();
-    let mut sql: String = String::new();
+    let mut sql_parts: Vec<String> = Vec::new();
     while let Some(sql_part) = generator.next()? {
-        sql.push_str(&sql_part);
+        sql_parts.push(sql_part);
     }
+    let sql = sql_parts.join(" ");
     Ok(sql)
 }
 
@@ -46,21 +46,62 @@ impl<'p> Generator<'p> {
         };
     }
 
-    fn current_is(&self, statement: Statement) -> bool {
-        std::mem::discriminant(&self.current) == std::mem::discriminant(&statement)
-    }
-
     fn generate_statement(&mut self) -> Result<String, GenerateError> {
-        match self.current {
-            Statement::Expression { .. } => Ok(self.generate_expression()?),
-            _ => Ok("".to_owned()),
-        }
-    }
-
-    fn generate_expression(&mut self) -> Result<String, GenerateError> {
-        let mut sql: String = match self.current.clone() {
+        let sql: String = match &self.current {
+            Statement::Expression { expression } => self.generate_expression(expression.clone())?,
             _ => return Err(GenerateError::UnexpectedStatement(self.current.clone())),
         };
+        self.write();
+        Ok(sql)
+    }
+
+    fn generate_expression(&mut self, expression: Expression) -> Result<String, GenerateError> {
+        let sql: String = match expression {
+            Expression::Identifier(s) => s,
+            // What do with exact search?
+            Expression::Exact(s) => s,
+            Expression::Infix(expr1, operator, expr2) => {
+                let sql_parts = [
+                    self.generate_expression(*expr1)?,
+                    self.generate_operator(operator)?,
+                    self.generate_expression(*expr2)?,
+                ];
+                sql_parts.join(" ")
+            }
+            Expression::Prefix(operator, expr) => {
+                let sql_parts = [
+                    self.generate_operator(operator)?,
+                    self.generate_expression(*expr)?,
+                ];
+                sql_parts.join(" ")
+            }
+            Expression::Function(name, expr) => {
+                let sql_parts = match name.as_str() {
+                    "contains" => [
+                        "CONTAINS(*, '".to_owned(),
+                        self.generate_expression(*expr)?,
+                        "')".to_owned(),
+                    ],
+                    "freetext" => [
+                        "FREETEXT(*, '".to_owned(),
+                        self.generate_expression(*expr)?,
+                        "')".to_owned(),
+                    ],
+                    _ => return Err(GenerateError::UnexpectedStatement(self.current.clone())),
+                };
+                sql_parts.join("")
+            }
+        };
+        Ok(sql)
+    }
+
+    fn generate_operator(&mut self, operator: Operator) -> Result<String, GenerateError> {
+        let op = match operator {
+            Operator::And => "AND",
+            Operator::Or => "OR",
+            Operator::Not => "NOT",
+        };
+        Ok(op.to_owned())
     }
 }
 

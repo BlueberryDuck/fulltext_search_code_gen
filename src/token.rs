@@ -43,11 +43,6 @@ pub enum Token {
     #[token("|")]
     Or,
 
-    #[token("true")]
-    True,
-    #[token("false")]
-    False,
-
     #[token("@")]
     At,
     #[token(":")]

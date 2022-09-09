@@ -1,6 +1,5 @@
 use crate::token::Token;
 
-pub type Program = Vec<Statement>;
 pub type Identifier = String;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,7 +20,6 @@ pub enum Statement {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Exact(String),
-    Bool(bool),
     Identifier(Identifier),
     Infix(Box<Expression>, Operator, Box<Expression>),
     Prefix(Operator, Box<Expression>),

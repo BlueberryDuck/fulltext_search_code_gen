@@ -13,5 +13,9 @@ fn main() {
     let tokens = token::lex(contents.as_str());
     let ast = parser::parse(tokens);
 
-    println!("{:?}", ast.unwrap());
+    println!("{:?}", ast);
+
+    let generator = generator::generate(ast.unwrap());
+
+    println!("{:?}", generator);
 }

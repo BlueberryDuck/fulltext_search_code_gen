@@ -1,1 +1,1 @@
-@contains :-(search; t€rm): & @freetext :"exact sea'rch" !terms:
+@contains :-(search term): & @freetext :"exact search" !terms:

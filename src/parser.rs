@@ -4,15 +4,15 @@ use thiserror::Error;
 use crate::ast::*;
 use crate::token::Token;
 
-pub fn parse(tokens: Vec<Token>) -> Result<Program, ParseError> {
+pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     let mut parser = Parser::new(tokens.iter());
     parser.read();
     parser.read();
-    let mut program: Program = Vec::new();
+    let mut ast: Vec<Statement> = Vec::new();
     while let Some(statement) = parser.next()? {
-        program.push(statement);
+        ast.push(statement);
     }
-    Ok(program)
+    Ok(ast)
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -112,14 +112,6 @@ impl<'p> Parser<'p> {
             Token::String(s) => {
                 self.expect_token_and_read(Token::String("".to_string()))?;
                 Expression::Exact(s.to_string())
-            }
-            Token::True => {
-                self.expect_token_and_read(Token::True)?;
-                Expression::Bool(true)
-            }
-            Token::False => {
-                self.expect_token_and_read(Token::False)?;
-                Expression::Bool(false)
             }
             Token::Identifier(s) => {
                 self.expect_identifier_and_read()?;
