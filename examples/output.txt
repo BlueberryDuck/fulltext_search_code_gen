@@ -1,0 +1,54 @@
+Changed database context to 'Wikipedia'.
+Title                                                                                                                                                                                                                                                           Text                                                                                                                                                                                                                                                             ID          KEY         RANK       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ----------- ----------- -----------
+Aluminium                                                                                                                                                                                                                                                       "{{other uses}}
+{{pp-vandalism|small=yes}}
+{{good article}}
+{{Use dmy dates|date=July 2016}}
+
+<!--About the spelling of 'aluminium': this article is written using the IUPAC spelling of ""aluminium"" and so ""-ium"" should be used. The article follows [[Wik         170         170          18
+Anisotropy                                                                                                                                                                                                                                                      "{{short description|In geometry, property of being directionally dependent}}
+{{More citations needed|date=May 2017}}
+{{Use dmy dates|date=December 2020}}
+[[File:WMAP 2010.png|thumb|upright=1.36|[[Wilkinson Microwave Anisotropy Probe|WMAP]] image of the (e         333         333           9
+Analgesic                                                                                                                                                                                                                                                       "{{short description|Any member of the group of drugs used to achieve analgesia, relief from pain}}
+{{For|the medical condition of hereditary analgesia|Congenital insensitivity to pain}}
+{{Redirect|Painkiller}}
+{{Infobox drug class
+| Image=Opium pod cut to         905         905           9
+Alkali metal                                                                                                                                                                                                                                                    "{{short description|Group of highly-reactive chemical elements}}
+{{distinguish|Alkaline earth metal}}
+{{Good article}}
+{{Use dmy dates|date=July 2020}}
+{{Periodic table (alkali metals)}}
+
+The '''alkali metals''' consist of the [[chemical element]]s [[lith          60          60           8
+Anchor                                                                                                                                                                                                                                                          "{{short description|Device used to secure a vessel to the bed of a body of water to prevent the craft from drifting}}
+{{Other uses}}
+{{redirect|Boat anchor|the metaphor|Boat anchor (metaphor)}}
+{{Use dmy dates|date=July 2020}}
+[[File:Kotwica SS Pozna+ä.JP         376         376           5
+Arsenic                                                                                                                                                                                                                                                         "{{About|the chemical element|the poison commonly called ""arsenic""|arsenic trioxide|other uses}}
+{{Infobox arsenic}}
+{{Use dmy dates|date=December 2020}}
+
+'''Arsenic''' is a [[chemical element]] with the [[Symbol (chemistry)|symbol]] '''As''' and [[atomi         163         163           5
+Actinide                                                                                                                                                                                                                                                        "{{short description|F-block chemical elements}}
+{{Use dmy dates|date=May 2020}}
+{{Periodic table (micro)| mark=Ac,Th,Pa,U,Np,Pu,Am,Cm,Bk,Cf,Es,Fm,Md,No,Lr|title=Actinides in the [[periodic table]]}}
+{{Sidebar periodic table|expanded=metalicity}}
+
+The '''a         924         924           4
+Audi                                                                                                                                                                                                                                                            "{{Short description|German automotive manufacturer}}
+{{Distinguish|Aldi}}
+{{For|the song by American rapper Smokepurpp|Audi (song)}}
+{{Pp-vandalism|small=yes}}
+{{Use dmy dates|date=November 2020}}
+{{Infobox company
+| name = Audi AG
+| logo = Audi-Logo 2016         136         136           4
+Alloy                                                                                                                                                                                                                                                           "{{short description|Mixture or metallic solid solution composed of two or more elements}}
+{{other uses}}
+[[File:Alloy and metal samples - Beryllium-Copper, Inconel, Steel, Titanium, Aluminum, Magnesium.jpg|thumb|300x300px|From left to right: three alloys          296         296           4
+
+(9 rows affected)

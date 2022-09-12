@@ -1,0 +1,1 @@
+sqlcmd -S DESKTOP-JKNEH40\SQLEXPRESS -i C:\_GIT\fulltext_search_code_gen\examples\example.sql -o C:\_GIT\fulltext_search_code_gen\examples\output.txt

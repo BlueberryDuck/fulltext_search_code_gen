@@ -1,0 +1,1 @@
+USE Wikipedia; SELECT * FROM [dbo].[Real_Article] AS FT_TBL INNER JOIN CONTAINSTABLE([dbo].[Real_Article], *, 'light AND aluminium') AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 2 ORDER BY KEY_TBL.RANK DESC;
