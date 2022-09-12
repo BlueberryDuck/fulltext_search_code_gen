@@ -8,24 +8,12 @@ pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     generator.write();
     generator.write();
     let mut sql_parts: Vec<String> = Vec::new();
-    sql_parts.push(
-        "USE Wikipedia;
-        SELECT *
-        FROM [dbo].[Real_Article] AS FT_TBL
-        INNER JOIN
-        "
-        .to_owned(),
-    );
+    sql_parts
+        .push("USE Wikipedia; SELECT * FROM [dbo].[Real_Article] AS FT_TBL INNER JOIN".to_owned());
     while let Some(sql_part) = generator.next()? {
         sql_parts.push(sql_part);
     }
-    sql_parts.push(
-        "AS KEY_TBL
-        ON FT_TBL.[ID] = KEY_TBL.[KEY]
-        WHERE KEY_TBL.RANK > 2
-        ORDER BY KEY_TBL.RANK DESC;"
-            .to_owned(),
-    );
+    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 2 ORDER BY KEY_TBL.RANK DESC;".to_owned());
     let sql = sql_parts.join(" ");
     Ok(sql)
 }
@@ -93,18 +81,12 @@ impl<'p> Generator<'p> {
             Expression::Function(name, expr) => {
                 let sql_parts = match name.as_str() {
                     "contains" => [
-                        "	CONTAINSTABLE(	[dbo].[Real_Article]
-                            , [Text]
-                            , '"
-                        .to_owned(),
+                        "CONTAINSTABLE([dbo].[Real_Article], *, '".to_owned(),
                         self.generate_expression(*expr)?,
                         "')".to_owned(),
                     ],
                     "freetext" => [
-                        "	FREETEXTTABLE(	[dbo].[Real_Article]
-                            , [Text]
-                            , '"
-                        .to_owned(),
+                        "FREETEXTTABLE([dbo].[Real_Article], *, '".to_owned(),
                         self.generate_expression(*expr)?,
                         "')".to_owned(),
                     ],
