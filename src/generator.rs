@@ -9,11 +9,11 @@ pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     generator.write();
     let mut sql_parts: Vec<String> = Vec::new();
     sql_parts
-        .push("USE Wikipedia; SELECT * FROM [dbo].[Real_Article] AS FT_TBL INNER JOIN".to_owned());
+        .push("USE Wikipedia; SELECT TOP 5 * FROM(SELECT FT_TBL.Title, KEY_TBL.RANK FROM [dbo].[Real_Article] AS FT_TBL INNER JOIN".to_owned());
     while let Some(sql_part) = generator.next()? {
         sql_parts.push(sql_part);
     }
-    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 2 ORDER BY KEY_TBL.RANK DESC;".to_owned());
+    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 2) AS FS_RESULT ORDER BY FS_RESULT.RANK DESC;".to_owned());
     let sql = sql_parts.join(" ");
     Ok(sql)
 }
