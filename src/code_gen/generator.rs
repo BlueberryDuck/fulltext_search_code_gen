@@ -1,7 +1,7 @@
 use std::slice::Iter;
 use thiserror::Error;
 
-use crate::ast::{Expression, Operator, Statement};
+use crate::code_gen::ast::{Expression, Operator, Statement};
 
 pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     let mut generator = Generator::new(ast.iter());

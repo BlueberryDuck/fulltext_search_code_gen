@@ -1,8 +1,8 @@
 use std::slice::Iter;
 use thiserror::Error;
 
-use crate::ast::*;
-use crate::token::Token;
+use crate::code_gen::ast::*;
+use crate::code_gen::lexer::Token;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     let mut parser = Parser::new(tokens.iter());

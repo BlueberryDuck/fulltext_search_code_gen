@@ -1,32 +1,54 @@
 use regex::Regex;
-use std::env::args;
 use std::fs::{read_to_string, File};
 use std::io::Write;
+use std::process::Command;
 
-mod ast;
-mod generator;
-mod parser;
-mod token;
+mod code_gen;
 
-fn main() -> std::io::Result<()> {
-    let file = args().nth(1).unwrap();
-    let contents = read_to_string(file).unwrap();
+// Path Variables
+const PATH_SEARCH: &str = "files\\search.txt";
+const PATH_SQL: &str = "files\\fulltext.sql";
+const PATH_RESULTS: &str = "files\\results.txt";
 
-    let tokens = token::lex(contents.as_str());
-    let ast = parser::parse(tokens);
-    let generator = generator::generate(ast.unwrap());
-
-    let sql_file = "C:\\_GIT\\fulltext_search_code_gen\\examples\\example.sql";
-    let mut output = File::create(sql_file)?;
-
-    println!("{:?}", read_results("examples\\output.txt"));
-
-    write!(output, "{}", generator.unwrap())
+fn main() {
+    let contents = read_to_string(PATH_SEARCH).unwrap();
+    println!("Generator Errors: {:?}", run_code_gen(contents, PATH_SQL));
+    println!("SQL EXECUTE {:?}", execute_sql(PATH_SQL, PATH_RESULTS));
+    println!("{:?}", read_results(PATH_RESULTS));
 }
 
-fn read_results(path: &str) -> Vec<(String, i64)> {
+fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
+    let tokens = code_gen::lexer::lex(search.as_str());
+    let ast = code_gen::parser::parse(tokens);
+    let generator = code_gen::generator::generate(ast.unwrap());
+
+    write!(File::create(path)?, "{}", generator.unwrap())
+}
+
+fn execute_sql(sql_path: &str, results_path: &str) -> String {
+    let command = Command::new("cmd")
+        .args(&[
+            "/C",
+            "sqlcmd",
+            "-S",
+            "DESKTOP-JKNEH40\\SQLEXPRESS",
+            "-i",
+            sql_path,
+            "-o",
+            results_path,
+        ])
+        .output()
+        .expect("failed to execute operation");
+    format!("{}", command.status)
+}
+
+fn read_results(path: &str) -> Option<Vec<(String, i64)>> {
     let contents = read_to_string(path).unwrap();
     let mut vec: Vec<&str> = contents.split("\n").collect();
+
+    if vec.len() < 6 {
+        return None;
+    }
 
     // Remove metadata rows (first and last three rows)
     vec.remove(0);
@@ -49,5 +71,5 @@ fn read_results(path: &str) -> Vec<(String, i64)> {
 
         results.push((title, rank));
     }
-    results
+    Some(results)
 }

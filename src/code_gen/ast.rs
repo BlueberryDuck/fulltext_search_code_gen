@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::code_gen::lexer::Token;
 
 pub type Identifier = String;
 
