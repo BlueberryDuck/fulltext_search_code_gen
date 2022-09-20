@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div>
+    <p>{{ search }}</p>
+</div>
+{% for result in results %}
+<div>
+    <a href="https://en.wikipedia.org/wiki/{{ result.link }}">{{ result.title }}</a>
+    <small>{{ result.rank }}</small>
+</div>
+{% endfor %}
+{% endblock %}

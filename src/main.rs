@@ -1,20 +1,29 @@
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::fs::{read_to_string, File};
 use std::io::Write;
 use std::process::Command;
+use tera::{Context, Tera};
 
 mod code_gen;
 
 // Path Variables
-const PATH_SEARCH: &str = "files\\search.txt";
 const PATH_SQL: &str = "files\\fulltext.sql";
 const PATH_RESULTS: &str = "files\\results.txt";
 
-fn main() {
-    let contents = read_to_string(PATH_SEARCH).unwrap();
-    println!("Generator Errors: {:?}", run_code_gen(contents, PATH_SQL));
-    println!("SQL EXECUTE {:?}", execute_sql(PATH_SQL, PATH_RESULTS));
-    println!("{:?}", read_results(PATH_RESULTS));
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        let tera = Tera::new("templates/**/*").unwrap();
+        App::new()
+            .data(tera)
+            .route("/", web::get().to(search))
+            .route("/", web::post().to(result))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
 
 fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
@@ -72,4 +81,47 @@ fn read_results(path: &str) -> Option<Vec<(String, i64)>> {
         results.push((title, rank));
     }
     Some(results)
+}
+
+// Website stuff
+#[derive(Deserialize)]
+struct Search {
+    search: String,
+}
+#[derive(Serialize)]
+struct Result {
+    title: String,
+    rank: i64,
+    link: String,
+}
+
+async fn search(tera: web::Data<Tera>) -> impl Responder {
+    let mut data = Context::new();
+    data.insert("title", "Search field");
+
+    let rendered = tera.render("search.html", &data).unwrap();
+    HttpResponse::Ok().body(rendered)
+}
+
+async fn result(tera: web::Data<Tera>, data: web::Form<Search>) -> impl Responder {
+    println!("{:?}", run_code_gen(data.search.clone(), PATH_SQL));
+    execute_sql(PATH_SQL, PATH_RESULTS);
+    let results_vec = read_results(PATH_RESULTS).unwrap();
+    let mut results: Vec<Result> = Vec::new();
+    for result in results_vec {
+        let link = result.0.clone().replace(" ", "_");
+        results.push(Result {
+            title: result.0,
+            rank: result.1,
+            link,
+        })
+    }
+
+    let mut page_data = Context::new();
+    page_data.insert("title", "Results");
+    page_data.insert("search", &data.search);
+    page_data.insert("results", &results);
+
+    let rendered = tera.render("result.html", &page_data).unwrap();
+    HttpResponse::Ok().body(rendered)
 }
