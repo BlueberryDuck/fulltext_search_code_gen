@@ -19,7 +19,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Exact(String),
+    Phrase(String),
     Identifier(Identifier),
     Infix(Box<Expression>, Operator, Box<Expression>),
     Prefix(Operator, Box<Expression>),

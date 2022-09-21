@@ -61,8 +61,7 @@ impl<'p> Generator<'p> {
     fn generate_expression(&mut self, expression: Expression) -> Result<String, GenerateError> {
         let sql: String = match expression {
             Expression::Identifier(s) => s,
-            // What do with exact search?
-            Expression::Exact(s) => s,
+            Expression::Phrase(s) => s,
             Expression::Infix(expr1, operator, expr2) => {
                 let sql_parts = [
                     self.generate_expression(*expr1)?,

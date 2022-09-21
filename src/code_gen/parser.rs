@@ -109,9 +109,9 @@ impl<'p> Parser<'p> {
                 };
                 Expression::Function(name, Box::new(search))
             }
-            Token::String(s) => {
-                self.expect_token_and_read(Token::String("".to_string()))?;
-                Expression::Exact(s.to_string())
+            Token::Phrase(s) => {
+                self.expect_token_and_read(Token::Phrase("".to_string()))?;
+                Expression::Phrase(s.to_string())
             }
             Token::Identifier(s) => {
                 self.expect_identifier_and_read()?;

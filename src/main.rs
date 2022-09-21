@@ -51,7 +51,7 @@ fn execute_sql(sql_path: &str, results_path: &str) -> String {
     format!("{}", command.status)
 }
 
-fn read_results(path: &str) -> Option<Vec<(String, i64)>> {
+fn read_results(path: &str) -> Option<Vec<(String, u64)>> {
     let contents = read_to_string(path).unwrap();
     let mut vec: Vec<&str> = contents.split("\n").collect();
 
@@ -59,22 +59,23 @@ fn read_results(path: &str) -> Option<Vec<(String, i64)>> {
         return None;
     }
 
-    // Remove metadata rows (first and last three rows)
-    vec.remove(0);
-    vec.remove(0);
+    // Remove metadata rows (first three or four and last three rows)
+    while !vec[0].starts_with("---") {
+        vec.remove(0);
+    }
     vec.remove(0);
     vec.remove(vec.len() - 1);
     vec.remove(vec.len() - 1);
     vec.remove(vec.len() - 1);
 
-    let mut results: Vec<(String, i64)> = Vec::new();
+    let mut results: Vec<(String, u64)> = Vec::new();
     for row in vec {
         let row = row.replace("\r", "");
         let re = Regex::new(r"\s+").unwrap();
         let row = re.replace_all(&row, " ").to_string();
 
         let mut words: Vec<&str> = row.split(" ").collect();
-        let rank = words[words.len() - 1].parse::<i64>().unwrap();
+        let rank = words[words.len() - 1].parse::<u64>().unwrap();
         words.remove(words.len() - 1);
         let title = words.join(" ");
 
@@ -91,7 +92,7 @@ struct Search {
 #[derive(Serialize)]
 struct Result {
     title: String,
-    rank: i64,
+    rank: u64,
     link: String,
 }
 

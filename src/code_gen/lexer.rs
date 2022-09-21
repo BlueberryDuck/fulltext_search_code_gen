@@ -5,11 +5,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 }
 
 fn to_string(lex: &mut Lexer<Token>) -> Option<String> {
-    let mut string = lex.slice().to_string();
-    if string.starts_with('"') && string.ends_with('"') {
-        string.remove(0);
-        string.remove(string.len() - 1);
-    }
+    let string = lex.slice().to_string();
     Some(string)
 }
 
@@ -24,7 +20,7 @@ pub enum Token {
     #[regex(r"[0-9]+(\.[0-9]+)?", to_float)]
     Number(f64),
     #[regex(r##""(?:[^"\\]|\\.)*""##, to_string)]
-    String(String),
+    Phrase(String),
 
     #[token("(")]
     LeftParen,
@@ -59,7 +55,7 @@ impl Into<String> for Token {
     fn into(self) -> String {
         match self {
             Token::Identifier(s) => s,
-            Token::String(s) => s,
+            Token::Phrase(s) => s,
             _ => unreachable!(),
         }
     }
