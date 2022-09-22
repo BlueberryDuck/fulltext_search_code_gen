@@ -13,34 +13,47 @@ fn to_float(lex: &mut Lexer<Token>) -> Option<f64> {
     Some(lex.slice().parse().ok()?)
 }
 
+fn to_u64(lex: &mut Lexer<Token>) -> Option<u64> {
+    Some(lex.slice().parse().ok()?)
+}
+
 #[derive(Debug, Clone, Logos, PartialEq)]
 pub enum Token {
-    #[regex(r"[a-zA-Zß?üÜöÖäÄ,;._<>´`#§$%/\\=€]+", to_string)]
-    Identifier(String),
-    #[regex(r"[0-9]+(\.[0-9]+)?", to_float)]
-    Number(f64),
-    #[regex(r##""(?:[^"\\]|\\.)*""##, to_string)]
-    Phrase(String),
-
-    #[token("(")]
-    LeftParen,
-    #[token(")")]
-    RightParen,
+    #[regex(r##""(?:[^"\\]|\\.)*"|[a-zA-Zß?üÜöÖäÄ;\._<>´`#§$%/\\=€]+"##, to_string)]
+    WordOrPhrase(String),
+    #[regex(r"0+(\.[0-9]+)?|1", to_float)]
+    ZeroToOne(f64),
+    #[regex(r"[0-9]+", to_u64)]
+    Number(u64),
 
     #[token("!")]
     Bang,
     #[token("-")]
     Minus,
-
     #[token("&")]
     And,
     #[token("+")]
     Plus,
     #[token("|")]
     Or,
+    #[token("(")]
+    LeftParen,
+    #[token(")")]
+    RightParen,
+    #[token(",")]
+    Comma,
 
-    #[token("@")]
-    At,
+    #[token("@contains")]
+    Contains,
+    #[token("@startswith")]
+    Starts,
+    #[token("@inflection")]
+    Inflection,
+    #[token("@thesaurus")]
+    Thesaurus,
+    #[token("@near")]
+    Near,
+
     #[token(":")]
     Colon,
 
@@ -54,8 +67,7 @@ pub enum Token {
 impl Into<String> for Token {
     fn into(self) -> String {
         match self {
-            Token::Identifier(s) => s,
-            Token::Phrase(s) => s,
+            Token::WordOrPhrase(s) => s,
             _ => unreachable!(),
         }
     }

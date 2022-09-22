@@ -3,17 +3,26 @@ use thiserror::Error;
 
 use crate::code_gen::ast::{Expression, Operator, Statement};
 
+// Database constants
+const DB_NAME: &str = "Wikipedia";
+const TBL_NAME: &str = "[dbo].[Real_Article]";
+const RETURN_ATTRIBUTE: &str = "Title";
+const TOP_ROWS: u64 = 5;
+
 pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     let mut generator = Generator::new(ast.iter());
     generator.write();
     generator.write();
+
     let mut sql_parts: Vec<String> = Vec::new();
-    sql_parts
-        .push("USE Wikipedia; SELECT TOP 5 * FROM(SELECT FT_TBL.Title, KEY_TBL.RANK FROM [dbo].[Real_Article] AS FT_TBL INNER JOIN".to_owned());
+    sql_parts.push(format!(
+        "USE {}; SELECT TOP {} * FROM(SELECT FT_TBL.{}, KEY_TBL.RANK FROM {} AS FT_TBL INNER JOIN",
+        DB_NAME, TOP_ROWS, RETURN_ATTRIBUTE, TBL_NAME
+    ));
     while let Some(sql_part) = generator.next()? {
         sql_parts.push(sql_part);
     }
-    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 2) AS FS_RESULT ORDER BY FS_RESULT.RANK DESC;".to_owned());
+    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 5) AS FS_RESULT ORDER BY FS_RESULT.RANK DESC;".to_owned());
     let sql = sql_parts.join(" ");
     Ok(sql)
 }
@@ -60,8 +69,8 @@ impl<'p> Generator<'p> {
 
     fn generate_expression(&mut self, expression: Expression) -> Result<String, GenerateError> {
         let sql: String = match expression {
-            Expression::Identifier(s) => s,
-            Expression::Phrase(s) => s,
+            Expression::WordOrPhrase(s) => s,
+            Expression::Number(u) => u.to_string(),
             Expression::Infix(expr1, operator, expr2) => {
                 let sql_parts = [
                     self.generate_expression(*expr1)?,
@@ -77,20 +86,60 @@ impl<'p> Generator<'p> {
                 ];
                 sql_parts.join(" ")
             }
-            Expression::Function(name, expr) => {
-                let sql_parts = match name.as_str() {
-                    "contains" => [
-                        "CONTAINSTABLE([dbo].[Real_Article], *, '".to_owned(),
-                        self.generate_expression(*expr)?,
-                        "')".to_owned(),
-                    ],
-                    "freetext" => [
-                        "FREETEXTTABLE([dbo].[Real_Article], *, '".to_owned(),
-                        self.generate_expression(*expr)?,
-                        "')".to_owned(),
-                    ],
-                    _ => return Err(GenerateError::UnexpectedStatement(self.current.clone())),
-                };
+            Expression::Contains(expr) => {
+                format!(
+                    "CONTAINSTABLE({}, *, '{}')",
+                    TBL_NAME,
+                    self.generate_expression(*expr)?
+                )
+            }
+            Expression::Starts(expr) => {
+                let mut word_or_phrase = self.generate_expression(*expr)?;
+                if word_or_phrase.ends_with("\"") {
+                    word_or_phrase.insert(word_or_phrase.len() - 1, '*');
+                } else {
+                    word_or_phrase.push('*');
+                }
+
+                format!("CONTAINSTABLE({}, *, '{}')", TBL_NAME, word_or_phrase)
+            }
+            Expression::Inflection(expr) => {
+                let mut word_or_phrase = self.generate_expression(*expr)?;
+                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
+                    word_or_phrase.remove(0);
+                    word_or_phrase.remove(word_or_phrase.len() - 1);
+                }
+                format!(
+                    "CONTAINSTABLE({}, *, 'FORMSOF(INFLECTIONAL,\"{}\")')",
+                    TBL_NAME, word_or_phrase
+                )
+            }
+            Expression::Thesaurus(expr) => {
+                let mut word_or_phrase = self.generate_expression(*expr)?;
+                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
+                    word_or_phrase.remove(0);
+                    word_or_phrase.remove(word_or_phrase.len() - 1);
+                }
+                format!(
+                    "CONTAINSTABLE({}, *, 'FORMSOF(THESAURUS,\"{}\")')",
+                    TBL_NAME, word_or_phrase
+                )
+            }
+            Expression::Near(mut parameter) => {
+                let mut sql_parts: Vec<String> = Vec::new();
+                sql_parts.push(format!("CONTAINSTABLE({}, *, 'NEAR((", TBL_NAME));
+
+                // Extract last expression as proximity
+                let proximity = self.generate_expression(parameter[parameter.len() - 1].clone())?;
+                parameter.remove(parameter.len() - 1);
+
+                for expression in parameter {
+                    let string = self.generate_expression(expression)?;
+                    sql_parts.push(format!("{}", string));
+                    sql_parts.push(String::from(", "));
+                }
+                sql_parts.remove(sql_parts.len() - 1);
+                sql_parts.push(format!("), {})')", proximity));
                 sql_parts.join("")
             }
         };

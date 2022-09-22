@@ -30,10 +30,10 @@ impl Precedence {
     fn token(token: Token) -> Self {
         match token {
             Token::Bang | Token::Minus => Self::Not,
-            Token::Plus | Token::And | Token::Identifier(..) => Self::And,
+            Token::Plus | Token::And | Token::WordOrPhrase(..) => Self::And,
             Token::Or => Self::Or,
             Token::LeftParen => Self::Group,
-            Token::At => Self::Statement,
+            Token::Contains | Token::Starts | Token::Inflection => Self::Statement,
             _ => Self::Lowest,
         }
     }
@@ -88,10 +88,6 @@ impl<'p> Parser<'p> {
         Ok(result)
     }
 
-    fn expect_identifier_and_read(&mut self) -> Result<Token, ParseError> {
-        self.expect_token_and_read(Token::Identifier("".to_string()))
-    }
-
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.current {
             _ => Ok(Statement::Expression {
@@ -102,20 +98,48 @@ impl<'p> Parser<'p> {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
         let mut expr: Expression = match self.current.clone() {
-            Token::At => {
-                let (name, search) = match self.parse_function()? {
-                    Statement::Function { name, search, .. } => (name, search),
+            Token::Contains => {
+                let expression = match self.parse_contains()? {
+                    Statement::Contains { expression } => expression,
                     _ => return Err(ParseError::Unreachable),
                 };
-                Expression::Function(name, Box::new(search))
+                Expression::Contains(Box::new(expression))
             }
-            Token::Phrase(s) => {
-                self.expect_token_and_read(Token::Phrase("".to_string()))?;
-                Expression::Phrase(s.to_string())
+            Token::Starts => {
+                let expression = match self.parse_starts()? {
+                    Statement::Starts { expression } => expression,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Starts(Box::new(expression))
             }
-            Token::Identifier(s) => {
-                self.expect_identifier_and_read()?;
-                Expression::Identifier(s)
+            Token::Inflection => {
+                let expression = match self.parse_inflection()? {
+                    Statement::Inflection { expression } => expression,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Inflection(Box::new(expression))
+            }
+            Token::Thesaurus => {
+                let expression = match self.parse_thesaurus()? {
+                    Statement::Thesaurus { expression } => expression,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Thesaurus(Box::new(expression))
+            }
+            Token::Near => {
+                let parameter = match self.parse_near()? {
+                    Statement::Near { parameter } => parameter,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Near(parameter)
+            }
+            Token::WordOrPhrase(s) => {
+                self.expect_token_and_read(Token::WordOrPhrase("".to_string()))?;
+                Expression::WordOrPhrase(s.to_string())
+            }
+            Token::Number(u) => {
+                self.expect_token_and_read(Token::Number(0))?;
+                Expression::Number(u)
             }
             t @ Token::Minus | t @ Token::Bang => {
                 self.expect_token_and_read(t.clone())?;
@@ -150,7 +174,7 @@ impl<'p> Parser<'p> {
         expr: Expression,
     ) -> Result<Option<Expression>, ParseError> {
         Ok(match self.current {
-            Token::Minus | Token::Bang | Token::Identifier(..) => {
+            Token::Minus | Token::Bang | Token::WordOrPhrase(..) => {
                 let sec_expr = self.parse_expression(Precedence::And)?;
                 Some(Expression::Infix(
                     Box::new(expr),
@@ -181,13 +205,55 @@ impl<'p> Parser<'p> {
         })
     }
 
-    fn parse_function(&mut self) -> Result<Statement, ParseError> {
-        self.expect_token_and_read(Token::At)?;
-        let name: Identifier = self.expect_identifier_and_read()?.into();
+    fn parse_contains(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Contains)?;
         self.expect_token_and_read(Token::Colon)?;
-        let search: Expression = self.parse_expression(Precedence::Statement)?;
+        let expression: Expression = self.parse_expression(Precedence::Statement)?;
         self.expect_token_and_read(Token::Colon)?;
-        Ok(Statement::Function { name, search })
+        Ok(Statement::Contains { expression })
+    }
+
+    fn parse_starts(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Starts)?;
+        self.expect_token_and_read(Token::Colon)?;
+        let expression: Expression = self.parse_expression(Precedence::Statement)?;
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Starts { expression })
+    }
+
+    fn parse_inflection(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Inflection)?;
+        self.expect_token_and_read(Token::Colon)?;
+        let expression: Expression = self.parse_expression(Precedence::Statement)?;
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Inflection { expression })
+    }
+
+    fn parse_thesaurus(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Thesaurus)?;
+        self.expect_token_and_read(Token::Colon)?;
+        let expression: Expression = self.parse_expression(Precedence::Statement)?;
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Thesaurus { expression })
+    }
+
+    fn parse_near(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Near)?;
+        self.expect_token_and_read(Token::Colon)?;
+        let mut parameter: Vec<Expression> = Vec::new();
+        while !self.current_is(Token::Colon) {
+            if self.current_is(Token::Comma) {
+                self.expect_token_and_read(Token::Comma)?;
+            }
+            let expression = self.parse_expression(Precedence::Lowest)?;
+            parameter.push(expression);
+        }
+        match parameter.last() {
+            Some(Expression::WordOrPhrase(..)) => parameter.push(Expression::Number(5)),
+            _ => (),
+        }
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Near { parameter })
     }
 
     fn parse_group(&mut self) -> Result<Statement, ParseError> {

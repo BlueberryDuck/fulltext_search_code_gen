@@ -30,7 +30,6 @@ fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
     let tokens = code_gen::lexer::lex(search.as_str());
     let ast = code_gen::parser::parse(tokens);
     let generator = code_gen::generator::generate(ast.unwrap());
-
     write!(File::create(path)?, "{}", generator.unwrap())
 }
 
