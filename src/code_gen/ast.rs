@@ -2,13 +2,31 @@ use crate::code_gen::lexer::Token;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    Group { expression: Expression },
-    Contains { expression: Expression },
-    Starts { expression: Expression },
-    Inflection { expression: Expression },
-    Thesaurus { expression: Expression },
-    Expression { expression: Expression },
-    Near { parameter: Vec<Expression> },
+    Group {
+        expression: Expression,
+    },
+    Contains {
+        expression: Expression,
+    },
+    Starts {
+        expression: Expression,
+    },
+    Inflection {
+        expression: Expression,
+    },
+    Thesaurus {
+        expression: Expression,
+    },
+    Near {
+        parameter: Vec<Expression>,
+        proximity: Expression,
+    },
+    Weighted {
+        parameter: Vec<(Expression, Expression)>,
+    },
+    Expression {
+        expression: Expression,
+    },
     EoF,
 }
 
@@ -16,13 +34,15 @@ pub enum Statement {
 pub enum Expression {
     WordOrPhrase(String),
     Number(u64),
+    ZeroToOne(f64),
     Infix(Box<Expression>, Operator, Box<Expression>),
     Prefix(Operator, Box<Expression>),
     Contains(Box<Expression>),
     Starts(Box<Expression>),
     Inflection(Box<Expression>),
     Thesaurus(Box<Expression>),
-    Near(Vec<Expression>),
+    Near(Vec<Expression>, Box<Expression>),
+    Weighted(Vec<(Expression, Expression)>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

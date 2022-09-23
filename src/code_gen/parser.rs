@@ -127,11 +127,21 @@ impl<'p> Parser<'p> {
                 Expression::Thesaurus(Box::new(expression))
             }
             Token::Near => {
-                let parameter = match self.parse_near()? {
-                    Statement::Near { parameter } => parameter,
+                let (parameter, proximity) = match self.parse_near()? {
+                    Statement::Near {
+                        parameter,
+                        proximity,
+                    } => (parameter, proximity),
                     _ => return Err(ParseError::Unreachable),
                 };
-                Expression::Near(parameter)
+                Expression::Near(parameter, Box::new(proximity))
+            }
+            Token::Weighted => {
+                let parameter = match self.parse_weighted()? {
+                    Statement::Weighted { parameter } => parameter,
+                    _ => return Err(ParseError::Unreachable),
+                };
+                Expression::Weighted(parameter)
             }
             Token::WordOrPhrase(s) => {
                 self.expect_token_and_read(Token::WordOrPhrase("".to_string()))?;
@@ -140,6 +150,10 @@ impl<'p> Parser<'p> {
             Token::Number(u) => {
                 self.expect_token_and_read(Token::Number(0))?;
                 Expression::Number(u)
+            }
+            Token::ZeroToOne(f) => {
+                self.expect_token_and_read(Token::ZeroToOne(0.0))?;
+                Expression::ZeroToOne(f)
             }
             t @ Token::Minus | t @ Token::Bang => {
                 self.expect_token_and_read(t.clone())?;
@@ -241,19 +255,58 @@ impl<'p> Parser<'p> {
         self.expect_token_and_read(Token::Near)?;
         self.expect_token_and_read(Token::Colon)?;
         let mut parameter: Vec<Expression> = Vec::new();
+        let mut proximity = Expression::Number(5);
         while !self.current_is(Token::Colon) {
             if self.current_is(Token::Comma) {
                 self.expect_token_and_read(Token::Comma)?;
             }
-            let expression = self.parse_expression(Precedence::Lowest)?;
-            parameter.push(expression);
-        }
-        match parameter.last() {
-            Some(Expression::WordOrPhrase(..)) => parameter.push(Expression::Number(5)),
-            _ => (),
+            match self.parse_expression(Precedence::Lowest)? {
+                Expression::WordOrPhrase(s) => parameter.push(Expression::WordOrPhrase(s)),
+                Expression::Number(u) => {
+                    if self.current_is(Token::Colon) {
+                        proximity = Expression::Number(u)
+                    } else {
+                        return Err(ParseError::UnexpectedToken(self.current.clone()));
+                    }
+                }
+                _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
+            }
         }
         self.expect_token_and_read(Token::Colon)?;
-        Ok(Statement::Near { parameter })
+        Ok(Statement::Near {
+            parameter,
+            proximity,
+        })
+    }
+
+    fn parse_weighted(&mut self) -> Result<Statement, ParseError> {
+        self.expect_token_and_read(Token::Weighted)?;
+        self.expect_token_and_read(Token::Colon)?;
+        let mut parameter: Vec<(Expression, Expression)> = Vec::new();
+        let mut sum_weights: f64 = 0.0;
+        while !self.current_is(Token::Colon) {
+            if self.current_is(Token::Comma) {
+                self.expect_token_and_read(Token::Comma)?;
+            }
+            let expression = match self.parse_expression(Precedence::Lowest)? {
+                Expression::WordOrPhrase(s) => Expression::WordOrPhrase(s),
+                _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
+            };
+            self.expect_token_and_read(Token::Comma);
+            let weight = match self.parse_expression(Precedence::Lowest)? {
+                Expression::ZeroToOne(f) => {
+                    sum_weights += f;
+                    Expression::ZeroToOne(f)
+                }
+                _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
+            };
+            parameter.push((expression, weight));
+        }
+        if sum_weights != 1.0 {
+            return Err(ParseError::WeightError(sum_weights));
+        }
+        self.expect_token_and_read(Token::Colon)?;
+        Ok(Statement::Weighted { parameter })
     }
 
     fn parse_group(&mut self) -> Result<Statement, ParseError> {
@@ -270,4 +323,6 @@ pub enum ParseError {
     UnexpectedToken(Token),
     #[error("Entered unreachable code.")]
     Unreachable,
+    #[error("Weights do not add up to 1.0. Sum of all weights: {0}")]
+    WeightError(f64),
 }

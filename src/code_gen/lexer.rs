@@ -53,6 +53,8 @@ pub enum Token {
     Thesaurus,
     #[token("@near")]
     Near,
+    #[token("@weighted")]
+    Weighted,
 
     #[token(":")]
     Colon,

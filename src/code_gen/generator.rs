@@ -71,18 +71,25 @@ impl<'p> Generator<'p> {
         let sql: String = match expression {
             Expression::WordOrPhrase(s) => s,
             Expression::Number(u) => u.to_string(),
+            Expression::ZeroToOne(f) => f.to_string(),
             Expression::Infix(expr1, operator, expr2) => {
                 let sql_parts = [
+                    String::from("("),
                     self.generate_expression(*expr1)?,
+                    String::from(")"),
                     self.generate_operator(operator)?,
+                    String::from("("),
                     self.generate_expression(*expr2)?,
+                    String::from(")"),
                 ];
                 sql_parts.join(" ")
             }
             Expression::Prefix(operator, expr) => {
                 let sql_parts = [
                     self.generate_operator(operator)?,
+                    String::from("("),
                     self.generate_expression(*expr)?,
+                    String::from(")"),
                 ];
                 sql_parts.join(" ")
             }
@@ -125,21 +132,29 @@ impl<'p> Generator<'p> {
                     TBL_NAME, word_or_phrase
                 )
             }
-            Expression::Near(mut parameter) => {
+            Expression::Near(parameter, proximity) => {
                 let mut sql_parts: Vec<String> = Vec::new();
                 sql_parts.push(format!("CONTAINSTABLE({}, *, 'NEAR((", TBL_NAME));
-
-                // Extract last expression as proximity
-                let proximity = self.generate_expression(parameter[parameter.len() - 1].clone())?;
-                parameter.remove(parameter.len() - 1);
-
                 for expression in parameter {
                     let string = self.generate_expression(expression)?;
                     sql_parts.push(format!("{}", string));
                     sql_parts.push(String::from(", "));
                 }
                 sql_parts.remove(sql_parts.len() - 1);
-                sql_parts.push(format!("), {})')", proximity));
+                sql_parts.push(format!("), {})')", self.generate_expression(*proximity)?));
+                sql_parts.join("")
+            }
+            Expression::Weighted(parameter) => {
+                let mut sql_parts: Vec<String> = Vec::new();
+                sql_parts.push(format!("CONTAINSTABLE({}, *, 'ISABOUT(", TBL_NAME));
+                for (word_or_phrase_expr, weight_expr) in parameter {
+                    let word_or_phrase = self.generate_expression(word_or_phrase_expr)?;
+                    let weight = self.generate_expression(weight_expr)?;
+                    sql_parts.push(format!("{} WEIGHT({})", word_or_phrase, weight));
+                    sql_parts.push(String::from(", "));
+                }
+                sql_parts.remove(sql_parts.len() - 1);
+                sql_parts.push(String::from(")')"));
                 sql_parts.join("")
             }
         };
