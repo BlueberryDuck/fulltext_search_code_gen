@@ -24,9 +24,6 @@ pub enum Statement {
     Weighted {
         parameter: Vec<(Expression, Expression)>,
     },
-    Expression {
-        expression: Expression,
-    },
     EoF,
 }
 
@@ -37,12 +34,6 @@ pub enum Expression {
     ZeroToOne(f64),
     Infix(Box<Expression>, Operator, Box<Expression>),
     Prefix(Operator, Box<Expression>),
-    Contains(Box<Expression>),
-    Starts(Box<Expression>),
-    Inflection(Box<Expression>),
-    Thesaurus(Box<Expression>),
-    Near(Vec<Expression>, Box<Expression>),
-    Weighted(Vec<(Expression, Expression)>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

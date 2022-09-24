@@ -59,8 +59,71 @@ impl<'p> Generator<'p> {
     }
 
     fn generate_statement(&mut self) -> Result<String, GenerateError> {
-        let sql: String = match &self.current {
-            Statement::Expression { expression } => self.generate_expression(expression.clone())?,
+        let sql: String = match self.current.clone() {
+            Statement::Contains { expression } => format!(
+                "CONTAINSTABLE({}, *, '{}')",
+                TBL_NAME,
+                self.generate_expression(expression)?
+            ),
+            Statement::Starts { expression } => {
+                let mut word_or_phrase = self.generate_expression(expression)?;
+                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
+                    word_or_phrase.insert(word_or_phrase.len() - 1, '*');
+                } else {
+                    word_or_phrase.push('*');
+                }
+                format!("CONTAINSTABLE({}, *, '{}')", TBL_NAME, word_or_phrase)
+            }
+            Statement::Inflection { expression } => {
+                let mut word_or_phrase = self.generate_expression(expression)?;
+                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
+                    word_or_phrase.remove(0);
+                    word_or_phrase.remove(word_or_phrase.len() - 1);
+                }
+                format!(
+                    "CONTAINSTABLE({}, *, 'FORMSOF(INFLECTIONAL,\"{}\")')",
+                    TBL_NAME, word_or_phrase
+                )
+            }
+            Statement::Thesaurus { expression } => {
+                let mut word_or_phrase = self.generate_expression(expression)?;
+                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
+                    word_or_phrase.remove(0);
+                    word_or_phrase.remove(word_or_phrase.len() - 1);
+                }
+                format!(
+                    "CONTAINSTABLE({}, *, 'FORMSOF(THESAURUS,\"{}\")')",
+                    TBL_NAME, word_or_phrase
+                )
+            }
+            Statement::Near {
+                parameter,
+                proximity,
+            } => {
+                let mut sql_parts: Vec<String> = Vec::new();
+                sql_parts.push(format!("CONTAINSTABLE({}, *, 'NEAR((", TBL_NAME));
+                for expression in parameter {
+                    let string = self.generate_expression(expression)?;
+                    sql_parts.push(format!("{}", string));
+                    sql_parts.push(String::from(", "));
+                }
+                sql_parts.remove(sql_parts.len() - 1);
+                sql_parts.push(format!("), {})')", self.generate_expression(proximity)?));
+                sql_parts.join("")
+            }
+            Statement::Weighted { parameter } => {
+                let mut sql_parts: Vec<String> = Vec::new();
+                sql_parts.push(format!("CONTAINSTABLE({}, *, 'ISABOUT(", TBL_NAME));
+                for (word_or_phrase_expr, weight_expr) in parameter {
+                    let word_or_phrase = self.generate_expression(word_or_phrase_expr)?;
+                    let weight = self.generate_expression(weight_expr)?;
+                    sql_parts.push(format!("{} WEIGHT({})", word_or_phrase, weight));
+                    sql_parts.push(String::from(", "));
+                }
+                sql_parts.remove(sql_parts.len() - 1);
+                sql_parts.push(String::from(")')"));
+                sql_parts.join("")
+            }
             _ => return Err(GenerateError::UnexpectedStatement(self.current.clone())),
         };
         self.write();
@@ -90,70 +153,6 @@ impl<'p> Generator<'p> {
                     self.generate_expression(*expr)?,
                 ];
                 sql_parts.join(" ")
-            }
-            Expression::Contains(expr) => {
-                format!(
-                    "CONTAINSTABLE({}, *, '{}')",
-                    TBL_NAME,
-                    self.generate_expression(*expr)?
-                )
-            }
-            Expression::Starts(expr) => {
-                let mut word_or_phrase = self.generate_expression(*expr)?;
-                if word_or_phrase.ends_with("\"") {
-                    word_or_phrase.insert(word_or_phrase.len() - 1, '*');
-                } else {
-                    word_or_phrase.push('*');
-                }
-
-                format!("CONTAINSTABLE({}, *, '{}')", TBL_NAME, word_or_phrase)
-            }
-            Expression::Inflection(expr) => {
-                let mut word_or_phrase = self.generate_expression(*expr)?;
-                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
-                    word_or_phrase.remove(0);
-                    word_or_phrase.remove(word_or_phrase.len() - 1);
-                }
-                format!(
-                    "CONTAINSTABLE({}, *, 'FORMSOF(INFLECTIONAL,\"{}\")')",
-                    TBL_NAME, word_or_phrase
-                )
-            }
-            Expression::Thesaurus(expr) => {
-                let mut word_or_phrase = self.generate_expression(*expr)?;
-                if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
-                    word_or_phrase.remove(0);
-                    word_or_phrase.remove(word_or_phrase.len() - 1);
-                }
-                format!(
-                    "CONTAINSTABLE({}, *, 'FORMSOF(THESAURUS,\"{}\")')",
-                    TBL_NAME, word_or_phrase
-                )
-            }
-            Expression::Near(parameter, proximity) => {
-                let mut sql_parts: Vec<String> = Vec::new();
-                sql_parts.push(format!("CONTAINSTABLE({}, *, 'NEAR((", TBL_NAME));
-                for expression in parameter {
-                    let string = self.generate_expression(expression)?;
-                    sql_parts.push(format!("{}", string));
-                    sql_parts.push(String::from(", "));
-                }
-                sql_parts.remove(sql_parts.len() - 1);
-                sql_parts.push(format!("), {})')", self.generate_expression(*proximity)?));
-                sql_parts.join("")
-            }
-            Expression::Weighted(parameter) => {
-                let mut sql_parts: Vec<String> = Vec::new();
-                sql_parts.push(format!("CONTAINSTABLE({}, *, 'ISABOUT(", TBL_NAME));
-                for (word_or_phrase_expr, weight_expr) in parameter {
-                    let word_or_phrase = self.generate_expression(word_or_phrase_expr)?;
-                    let weight = self.generate_expression(weight_expr)?;
-                    sql_parts.push(format!("{} WEIGHT({})", word_or_phrase, weight));
-                    sql_parts.push(String::from(", "));
-                }
-                sql_parts.remove(sql_parts.len() - 1);
-                sql_parts.push(String::from(")')"));
-                sql_parts.join("")
             }
         };
         Ok(sql)
