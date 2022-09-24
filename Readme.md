@@ -6,3 +6,4 @@ https://learn.microsoft.com/en-us/sql/relational-databases/search/search-for-wor
 
 TODO:
 * Fix AND, OR and NOT operators for functions
+* Proper Error Handling
