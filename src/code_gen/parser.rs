@@ -292,7 +292,7 @@ impl<'p> Parser<'p> {
                 Expression::WordOrPhrase(s) => Expression::WordOrPhrase(s),
                 _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
             };
-            self.expect_token_and_read(Token::Comma);
+            self.expect_token_and_read(Token::Comma)?;
             let weight = match self.parse_expression(Precedence::Lowest)? {
                 Expression::ZeroToOne(f) => {
                     sum_weights += f;

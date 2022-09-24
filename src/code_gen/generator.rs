@@ -87,9 +87,7 @@ impl<'p> Generator<'p> {
             Expression::Prefix(operator, expr) => {
                 let sql_parts = [
                     self.generate_operator(operator)?,
-                    String::from("("),
                     self.generate_expression(*expr)?,
-                    String::from(")"),
                 ];
                 sql_parts.join(" ")
             }
