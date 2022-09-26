@@ -58,7 +58,7 @@ impl<'p> Parser<'p> {
         if self.current == Token::EoF {
             return Ok(None);
         }
-        Ok(Some(self.parse_statement()?))
+        Ok(Some(self.parse_statement(Precedence::Lowest)?))
     }
 
     fn read(&mut self) {
@@ -88,36 +88,44 @@ impl<'p> Parser<'p> {
         Ok(result)
     }
 
-    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        match self.current {
-            Token::Contains => Ok(Statement::Contains {
+    fn parse_statement(&mut self, precedence: Precedence) -> Result<Statement, ParseError> {
+        let mut statement = match self.current.clone() {
+            Token::Contains => Statement::Contains {
                 expression: self.parse_contains()?,
-            }),
-            Token::Starts => Ok(Statement::Starts {
+            },
+            Token::Starts => Statement::Starts {
                 expression: self.parse_starts()?,
-            }),
-            Token::Inflection => Ok(Statement::Inflection {
+            },
+            Token::Inflection => Statement::Inflection {
                 expression: self.parse_inflection()?,
-            }),
-            Token::Thesaurus => Ok(Statement::Thesaurus {
+            },
+            Token::Thesaurus => Statement::Thesaurus {
                 expression: self.parse_thesaurus()?,
-            }),
+            },
             Token::Near => {
                 let (parameter, proximity) = self.parse_near()?;
-                Ok(Statement::Near {
+                Statement::Near {
                     parameter,
                     proximity,
-                })
+                }
             }
-            Token::Weighted => Ok(Statement::Weighted {
+            Token::Weighted => Statement::Weighted {
                 parameter: self.parse_weighted()?,
-            }),
+            },
             _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
+        };
+        while !self.current_is(Token::EoF) && precedence < Precedence::token(self.current.clone()) {
+            if let Some(in_statement) = self.parse_infix_statement(statement.clone())? {
+                statement = in_statement
+            } else {
+                break;
+            }
         }
+        Ok(statement)
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
-        let mut expr: Expression = match self.current.clone() {
+        let mut expr = match self.current.clone() {
             Token::WordOrPhrase(s) => {
                 self.expect_token_and_read(Token::WordOrPhrase("".to_string()))?;
                 Expression::WordOrPhrase(s.to_string())
@@ -189,6 +197,25 @@ impl<'p> Parser<'p> {
                     Operator::token(token),
                     Box::new(sec_expr),
                 ))
+            }
+            _ => None,
+        })
+    }
+
+    fn parse_infix_statement(
+        &mut self,
+        statement: Statement,
+    ) -> Result<Option<Statement>, ParseError> {
+        Ok(match self.current {
+            Token::Plus | Token::And | Token::Or => {
+                let token = self.current.clone();
+                self.read();
+                let second_statement = self.parse_statement(Precedence::token(token.clone()))?;
+                Some(Statement::Infix {
+                    statement: Box::new(statement),
+                    operator: Operator::token(token),
+                    second_statement: Box::new(second_statement),
+                })
             }
             _ => None,
         })

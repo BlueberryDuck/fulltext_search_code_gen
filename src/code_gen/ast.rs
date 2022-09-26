@@ -5,6 +5,11 @@ pub enum Statement {
     Group {
         expression: Expression,
     },
+    Infix {
+        statement: Box<Statement>,
+        operator: Operator,
+        second_statement: Box<Statement>,
+    },
     Contains {
         expression: Expression,
     },

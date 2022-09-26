@@ -16,13 +16,13 @@ pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
 
     let mut sql_parts: Vec<String> = Vec::new();
     sql_parts.push(format!(
-        "USE {}; SELECT TOP {} * FROM(SELECT FT_TBL.{}, KEY_TBL.RANK FROM {} AS FT_TBL INNER JOIN",
-        DB_NAME, TOP_ROWS, RETURN_ATTRIBUTE, TBL_NAME
+        "USE {}; SELECT TOP {} * FROM(SELECT FT_TBL.{}, KEY_TBL.RANK FROM {} AS FT_TBL INNER JOIN CONTAINSTABLE({}, *, '",
+        DB_NAME, TOP_ROWS, RETURN_ATTRIBUTE, TBL_NAME, TBL_NAME
     ));
     while let Some(sql_part) = generator.next()? {
         sql_parts.push(sql_part);
     }
-    sql_parts.push("AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 5) AS FS_RESULT ORDER BY FS_RESULT.RANK DESC;".to_owned());
+    sql_parts.push("') AS KEY_TBL ON FT_TBL.[ID] = KEY_TBL.[KEY] WHERE KEY_TBL.RANK > 5) AS FS_RESULT ORDER BY FS_RESULT.RANK DESC;".to_owned());
     let sql = sql_parts.join(" ");
     Ok(sql)
 }
@@ -46,7 +46,7 @@ impl<'p> Generator<'p> {
         if self.current == Statement::EoF {
             return Ok(None);
         }
-        Ok(Some(self.generate_statement()?))
+        Ok(Some(self.generate_statement(self.current.clone())?))
     }
 
     fn write(&mut self) {
@@ -58,13 +58,23 @@ impl<'p> Generator<'p> {
         };
     }
 
-    fn generate_statement(&mut self) -> Result<String, GenerateError> {
-        let sql: String = match self.current.clone() {
-            Statement::Contains { expression } => format!(
-                "CONTAINSTABLE({}, *, '{}')",
-                TBL_NAME,
-                self.generate_expression(expression)?
-            ),
+    fn generate_statement(&mut self, statement: Statement) -> Result<String, GenerateError> {
+        let sql: String = match statement {
+            Statement::Infix {
+                statement,
+                operator,
+                second_statement,
+            } => {
+                let sql_parts = [
+                    self.generate_statement(*statement)?,
+                    self.generate_operator(operator)?,
+                    self.generate_statement(*second_statement)?,
+                ];
+                sql_parts.join(" ")
+            }
+            Statement::Contains { expression } => {
+                format!("{}", self.generate_expression(expression)?)
+            }
             Statement::Starts { expression } => {
                 let mut word_or_phrase = self.generate_expression(expression)?;
                 if word_or_phrase.starts_with('"') && word_or_phrase.ends_with('"') {
@@ -72,7 +82,7 @@ impl<'p> Generator<'p> {
                 } else {
                     word_or_phrase.push('*');
                 }
-                format!("CONTAINSTABLE({}, *, '{}')", TBL_NAME, word_or_phrase)
+                format!("{}", word_or_phrase)
             }
             Statement::Inflection { expression } => {
                 let mut word_or_phrase = self.generate_expression(expression)?;
@@ -80,10 +90,7 @@ impl<'p> Generator<'p> {
                     word_or_phrase.remove(0);
                     word_or_phrase.remove(word_or_phrase.len() - 1);
                 }
-                format!(
-                    "CONTAINSTABLE({}, *, 'FORMSOF(INFLECTIONAL,\"{}\")')",
-                    TBL_NAME, word_or_phrase
-                )
+                format!("FORMSOF(INFLECTIONAL,\"{}\")", word_or_phrase)
             }
             Statement::Thesaurus { expression } => {
                 let mut word_or_phrase = self.generate_expression(expression)?;
@@ -91,29 +98,26 @@ impl<'p> Generator<'p> {
                     word_or_phrase.remove(0);
                     word_or_phrase.remove(word_or_phrase.len() - 1);
                 }
-                format!(
-                    "CONTAINSTABLE({}, *, 'FORMSOF(THESAURUS,\"{}\")')",
-                    TBL_NAME, word_or_phrase
-                )
+                format!("FORMSOF(THESAURUS,\"{}\")", word_or_phrase)
             }
             Statement::Near {
                 parameter,
                 proximity,
             } => {
                 let mut sql_parts: Vec<String> = Vec::new();
-                sql_parts.push(format!("CONTAINSTABLE({}, *, 'NEAR((", TBL_NAME));
+                sql_parts.push(format!("NEAR(("));
                 for expression in parameter {
                     let string = self.generate_expression(expression)?;
                     sql_parts.push(format!("{}", string));
                     sql_parts.push(String::from(", "));
                 }
                 sql_parts.remove(sql_parts.len() - 1);
-                sql_parts.push(format!("), {})')", self.generate_expression(proximity)?));
+                sql_parts.push(format!("), {})", self.generate_expression(proximity)?));
                 sql_parts.join("")
             }
             Statement::Weighted { parameter } => {
                 let mut sql_parts: Vec<String> = Vec::new();
-                sql_parts.push(format!("CONTAINSTABLE({}, *, 'ISABOUT(", TBL_NAME));
+                sql_parts.push(format!("ISABOUT("));
                 for (word_or_phrase_expr, weight_expr) in parameter {
                     let word_or_phrase = self.generate_expression(word_or_phrase_expr)?;
                     let weight = self.generate_expression(weight_expr)?;
@@ -121,7 +125,7 @@ impl<'p> Generator<'p> {
                     sql_parts.push(String::from(", "));
                 }
                 sql_parts.remove(sql_parts.len() - 1);
-                sql_parts.push(String::from(")')"));
+                sql_parts.push(String::from(")"));
                 sql_parts.join("")
             }
             _ => return Err(GenerateError::UnexpectedStatement(self.current.clone())),
