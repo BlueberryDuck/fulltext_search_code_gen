@@ -140,15 +140,19 @@ impl<'p> Generator<'p> {
             Expression::Number(u) => u.to_string(),
             Expression::ZeroToOne(f) => f.to_string(),
             Expression::Infix(expr1, operator, expr2) => {
-                let sql_parts = [
+                let mut sql_parts = [
                     String::from("("),
                     self.generate_expression(*expr1)?,
                     String::from(")"),
                     self.generate_operator(operator)?,
                     String::from("("),
-                    self.generate_expression(*expr2)?,
+                    self.generate_expression(*expr2.clone())?,
                     String::from(")"),
                 ];
+                match *expr2 {
+                    Expression::Prefix(Operator::Not, ..) => sql_parts[4] = String::from("NOT ("),
+                    _ => (),
+                }
                 sql_parts.join(" ")
             }
             Expression::Prefix(operator, expr) => {
@@ -166,7 +170,8 @@ impl<'p> Generator<'p> {
         let op = match operator {
             Operator::And => "AND",
             Operator::Or => "OR",
-            Operator::Not => "NOT",
+            // has to be set infront of parenthesis, see generate_expression for infix
+            Operator::Not => "",
         };
         Ok(op.to_owned())
     }
