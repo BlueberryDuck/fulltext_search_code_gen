@@ -2,7 +2,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{read_to_string, File};
-use std::io::Write;
+use std::io::{Error, ErrorKind, Write};
 use std::process::Command;
 use tera::{Context, Tera};
 
@@ -29,8 +29,19 @@ async fn main() -> std::io::Result<()> {
 fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
     let tokens = code_gen::lexer::lex(search.as_str());
     let ast = code_gen::parser::parse(tokens);
-    let generator = code_gen::generator::generate(ast.unwrap());
-    write!(File::create(path)?, "{}", generator.unwrap())
+    match ast {
+        Ok(ast) => {
+            let generator = code_gen::generator::generate(ast);
+            match generator {
+                Ok(generator) => write!(File::create(path)?, "{}", generator),
+                Err(gen_err) => Err(Error::new(ErrorKind::InvalidData, format!("{:?}", gen_err))),
+            }
+        }
+        Err(parse_err) => Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("{:?}", parse_err),
+        )),
+    }
 }
 
 fn execute_sql(sql_path: &str, results_path: &str) -> String {
@@ -104,24 +115,42 @@ async fn search(tera: web::Data<Tera>) -> impl Responder {
 }
 
 async fn result(tera: web::Data<Tera>, data: web::Form<Search>) -> impl Responder {
-    println!("{:?}", run_code_gen(data.search.clone(), PATH_SQL));
-    execute_sql(PATH_SQL, PATH_RESULTS);
-    let results_vec = read_results(PATH_RESULTS).unwrap();
-    let mut results: Vec<Result> = Vec::new();
-    for result in results_vec {
-        let link = result.0.clone().replace(" ", "_");
-        results.push(Result {
-            title: result.0,
-            rank: result.1,
-            link,
-        })
-    }
-
     let mut page_data = Context::new();
-    page_data.insert("title", "Results");
-    page_data.insert("search", &data.search);
+    let mut results: Vec<Result> = Vec::new();
+    match run_code_gen(data.search.clone(), PATH_SQL) {
+        Ok(_) => {
+            execute_sql(PATH_SQL, PATH_RESULTS);
+            let results_vec = read_results(PATH_RESULTS);
+            match results_vec {
+                Some(results_vec) => {
+                    for result in results_vec {
+                        results.push(Result {
+                            title: result.0.clone(),
+                            rank: result.1,
+                            link: result.0.replace(" ", "_"),
+                        })
+                    }
+                    page_data.insert("title", "Results");
+                    page_data.insert("search", &data.search);
+                }
+                None => {
+                    page_data.insert("title", "Error");
+                    page_data.insert(
+                        "search",
+                        &format!("{} results cannot be read", &data.search),
+                    );
+                }
+            }
+        }
+        Err(error) => {
+            page_data.insert("title", "Error");
+            page_data.insert(
+                "search",
+                &format!("{} threw an error: {}", &data.search, &error.to_string()),
+            );
+        }
+    }
     page_data.insert("results", &results);
-
     let rendered = tera.render("result.html", &page_data).unwrap();
     HttpResponse::Ok().body(rendered)
 }
