@@ -1,2 +1,4 @@
 /target
 /files
+/sql_server
+*.lnk
