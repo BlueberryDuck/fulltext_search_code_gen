@@ -4,8 +4,12 @@ use thiserror::Error;
 use crate::code_gen::ast::*;
 use crate::code_gen::lexer::Token;
 
+// Main function to start parsing process
+// Input: vec of tokens
+// Ouput: abstract syntax tree (vec of statements)
 pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     let mut parser = Parser::new(tokens.iter());
+    // read twice to overwrite intial EoF Tokens
     parser.read();
     parser.read();
     let mut ast: Vec<Statement> = Vec::new();
@@ -15,6 +19,8 @@ pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     Ok(ast)
 }
 
+// Precedence to enable priorities between expressions
+// Example: this OR that AND some (AND should have a higher priority)
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
@@ -26,6 +32,7 @@ enum Precedence {
     Group,
 }
 
+// Match tokens to precedences
 impl Precedence {
     fn token(token: Token) -> Self {
         match token {
@@ -39,6 +46,7 @@ impl Precedence {
     }
 }
 
+// Parser saves current and next tokens as attribute
 struct Parser<'p> {
     tokens: Iter<'p, Token>,
     current: Token,
@@ -46,6 +54,7 @@ struct Parser<'p> {
 }
 
 impl<'p> Parser<'p> {
+    // Initial parser creation
     fn new(tokens: Iter<'p, Token>) -> Self {
         Self {
             tokens,
@@ -54,6 +63,8 @@ impl<'p> Parser<'p> {
         }
     }
 
+    // Parse next statement if possible
+    // Output: statement or error
     fn next(&mut self) -> Result<Option<Statement>, ParseError> {
         if self.current == Token::EoF {
             return Ok(None);
@@ -61,6 +72,7 @@ impl<'p> Parser<'p> {
         Ok(Some(self.parse_statement(Precedence::Lowest)?))
     }
 
+    // Set current and peek one step further in the vec of tokens
     fn read(&mut self) {
         self.current = self.peek.clone();
         self.peek = if let Some(token) = self.tokens.next() {
@@ -70,10 +82,15 @@ impl<'p> Parser<'p> {
         };
     }
 
+    // See what the current token is
+    // Output: boolean
     fn current_is(&self, token: Token) -> bool {
         std::mem::discriminant(&self.current) == std::mem::discriminant(&token)
     }
 
+    // Current token should match the one given
+    // Input: token
+    // Output: token or error
     fn expect_token(&mut self, token: Token) -> Result<Token, ParseError> {
         if self.current_is(token) {
             Ok(self.current.clone())
@@ -82,12 +99,18 @@ impl<'p> Parser<'p> {
         }
     }
 
+    // Current token should match the one given and read to next token
+    // Input: token
+    // Output: token or error
     fn expect_token_and_read(&mut self, token: Token) -> Result<Token, ParseError> {
         let result = self.expect_token(token)?;
         self.read();
         Ok(result)
     }
 
+    // Parse statement, can only be a function or combination of functions
+    // Input: precedence
+    // Output: statement or error
     fn parse_statement(&mut self, precedence: Precedence) -> Result<Statement, ParseError> {
         let mut statement = match self.current.clone() {
             Token::Contains => Statement::Contains {
@@ -114,6 +137,7 @@ impl<'p> Parser<'p> {
             },
             _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
         };
+        // After a function could be an infix operator
         while !self.current_is(Token::EoF) && precedence < Precedence::token(self.current.clone()) {
             if let Some(in_statement) = self.parse_infix_statement(statement.clone())? {
                 statement = in_statement
@@ -124,6 +148,7 @@ impl<'p> Parser<'p> {
         Ok(statement)
     }
 
+    // Parse expression, could be a search term, number, operator or combination of epxressions
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
         let mut expr = match self.current.clone() {
             Token::WordOrPhrase(s) => {
@@ -145,6 +170,7 @@ impl<'p> Parser<'p> {
                     Box::new(self.parse_expression(Precedence::Prefix)?),
                 )
             }
+            // Start a group which gets higher precedence
             Token::LeftParen => {
                 let group_expression = match self.parse_group()? {
                     Statement::Group { expression } => expression,
@@ -154,6 +180,7 @@ impl<'p> Parser<'p> {
             }
             _ => return Err(ParseError::UnexpectedToken(self.current.clone())),
         };
+        // Afer an expression could be an infix operator or directly a new expression (here called postfix operator)
         while !self.current_is(Token::EoF) && precedence < Precedence::token(self.current.clone()) {
             if let Some(expression) = self.parse_postfix_expression(expr.clone())? {
                 expr = expression;
@@ -166,6 +193,8 @@ impl<'p> Parser<'p> {
         Ok(expr)
     }
 
+    // Postfix operator is called when two expressions are read, automatically inserting an AND inbetween
+    // Second Expression could have an NOT operator before the actual expression
     fn parse_postfix_expression(
         &mut self,
         expr: Expression,
@@ -183,6 +212,7 @@ impl<'p> Parser<'p> {
         })
     }
 
+    // Infix operators AND and OR expect an expression on either side
     fn parse_infix_expression(
         &mut self,
         expr: Expression,
@@ -202,6 +232,7 @@ impl<'p> Parser<'p> {
         })
     }
 
+    // Infix operators AND and OR expect a statement on either side
     fn parse_infix_statement(
         &mut self,
         statement: Statement,
@@ -221,6 +252,9 @@ impl<'p> Parser<'p> {
         })
     }
 
+    // Functions all have a similar strucure needing colons to surround their parameters
+
+    // Contains function only expects one word or phrase or combination of expressions
     fn parse_contains(&mut self) -> Result<Expression, ParseError> {
         self.expect_token_and_read(Token::Contains)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -229,6 +263,7 @@ impl<'p> Parser<'p> {
         Ok(expression)
     }
 
+    // Startswith function only expects one one word or phrase or combination of expressions
     fn parse_starts(&mut self) -> Result<Expression, ParseError> {
         self.expect_token_and_read(Token::Starts)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -237,6 +272,7 @@ impl<'p> Parser<'p> {
         Ok(expression)
     }
 
+    // Inflection function only expects one one word or phrase or combination of expressions
     fn parse_inflection(&mut self) -> Result<Expression, ParseError> {
         self.expect_token_and_read(Token::Inflection)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -245,6 +281,7 @@ impl<'p> Parser<'p> {
         Ok(expression)
     }
 
+    // Thesaurus function only expects one one word or phrase or combination of expressions
     fn parse_thesaurus(&mut self) -> Result<Expression, ParseError> {
         self.expect_token_and_read(Token::Thesaurus)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -253,6 +290,7 @@ impl<'p> Parser<'p> {
         Ok(expression)
     }
 
+    // Near function expects multiple comma-seperated words or phrases with an optional number as the last parameter
     fn parse_near(&mut self) -> Result<(Vec<Expression>, Expression), ParseError> {
         self.expect_token_and_read(Token::Near)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -278,6 +316,8 @@ impl<'p> Parser<'p> {
         Ok((parameter, proximity))
     }
 
+    // Weighted function expects pairs of words or phrases and a weight between 0 and 1
+    // All weights must add up to exactly 1
     fn parse_weighted(&mut self) -> Result<Vec<(Expression, Expression)>, ParseError> {
         self.expect_token_and_read(Token::Weighted)?;
         self.expect_token_and_read(Token::Colon)?;
@@ -308,6 +348,7 @@ impl<'p> Parser<'p> {
         Ok(parameter)
     }
 
+    // Groups must encapsulate an expression with parenthesis and have higher precedence then other operators
     fn parse_group(&mut self) -> Result<Statement, ParseError> {
         self.expect_token_and_read(Token::LeftParen)?;
         let expression = self.parse_expression(Precedence::Statement)?;
@@ -316,6 +357,7 @@ impl<'p> Parser<'p> {
     }
 }
 
+// Types of errors covered by the parser
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("Unexpected token {0:?}.")]

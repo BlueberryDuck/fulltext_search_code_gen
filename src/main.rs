@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 // Code generator to translate an input to SQL
-// Input: Search string and path to write result to
+// Input: search string and path to write result to
 // Output: SQL statement written to a file
 fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
     // Transform string to list of tokens
@@ -55,8 +55,8 @@ fn run_code_gen(search: String, path: &str) -> std::io::Result<()> {
 }
 
 // Runs a command to execute an sql statement to a local MSSQL Server
-// Input: Paths to the input file and where to write the result
-// Output: Txt file interpretation of the MSSQL Server result
+// Input: paths to the input file and where to write the result
+// Output: txt file interpretation of the MSSQL Server result
 fn execute_sql(sql_path: &str, results_path: &str) {
     Command::new("cmd")
         .args(&[
@@ -74,8 +74,8 @@ fn execute_sql(sql_path: &str, results_path: &str) {
 }
 
 // Reads the txt file result and extracts the actual results
-// Input: Path to the txt file
-// Output: Vec of titles and their search rank
+// Input: path to the txt file
+// Output: vec of titles and their search rank
 fn read_results(path: &str) -> Option<Vec<(String, u64)>> {
     let contents = read_to_string(path).unwrap();
     let mut contents_vec: Vec<&str> = contents.split("\n").collect();
