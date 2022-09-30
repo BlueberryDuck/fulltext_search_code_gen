@@ -9,7 +9,7 @@ use crate::code_gen::lexer::Token;
 // Ouput: abstract syntax tree (vec of statements)
 pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     let mut parser = Parser::new(tokens.iter());
-    // read twice to overwrite intial EoF Tokens
+    // read twice to overwrite intial EoF tokens
     parser.read();
     parser.read();
     let mut ast: Vec<Statement> = Vec::new();
@@ -295,6 +295,7 @@ impl<'p> Parser<'p> {
         self.expect_token_and_read(Token::Near)?;
         self.expect_token_and_read(Token::Colon)?;
         let mut parameter: Vec<Expression> = Vec::new();
+        // Proximity has a default value of 5 if no number is given
         let mut proximity = Expression::Number(5);
         while !self.current_is(Token::Colon) {
             if self.current_is(Token::Comma) {
