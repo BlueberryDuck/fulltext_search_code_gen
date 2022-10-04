@@ -349,7 +349,7 @@ impl<'p> Parser<'p> {
         Ok(parameter)
     }
 
-    // Groups must encapsulate an expression with parenthesis and have higher precedence then other operators
+    // Groups must encapsulate an expression with parentheses and have higher precedence then other operators
     fn parse_group(&mut self) -> Result<Statement, ParseError> {
         self.expect_token_and_read(Token::LeftParen)?;
         let expression = self.parse_expression(Precedence::Statement)?;

@@ -158,7 +158,7 @@ impl<'p> Generator<'p> {
             Expression::WordOrPhrase(s) => s,
             Expression::Number(u) => u.to_string(),
             Expression::ZeroToOne(f) => f.to_string(),
-            // Infix operator enclose their expressions with parenthesis to ensure precedence
+            // Infix operator enclose their expressions with parentheses to ensure precedence
             Expression::Infix(expr1, operator, expr2) => {
                 let mut sql_parts = [
                     String::from("("),
@@ -169,7 +169,7 @@ impl<'p> Generator<'p> {
                     self.generate_expression(*expr2.clone())?,
                     String::from(")"),
                 ];
-                // If the second expression is a not operator it must write NOT before the parenthesis
+                // If the second expression is a not operator it must write NOT before the parentheses
                 match *expr2 {
                     Expression::Prefix(Operator::Not, ..) => sql_parts[4] = String::from("NOT ("),
                     _ => (),
@@ -194,7 +194,7 @@ impl<'p> Generator<'p> {
         let op = match operator {
             Operator::And => "AND",
             Operator::Or => "OR",
-            // has to be set infront of parenthesis, see generate_expression for infix
+            // has to be set infront of parentheses, see generate_expression for infix
             Operator::Not => "",
         };
         Ok(op.to_owned())

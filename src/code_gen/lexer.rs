@@ -48,7 +48,7 @@ pub enum Token {
     // | for OR
     #[token("|")]
     Or,
-    // Parenthesis for grouping
+    // Parentheses for grouping
     #[token("(")]
     LeftParen,
     #[token(")")]
