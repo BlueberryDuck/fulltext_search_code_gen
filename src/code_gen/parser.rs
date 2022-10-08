@@ -19,7 +19,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Vec<Statement>, ParseError> {
     Ok(ast)
 }
 
-// Precedence to enable priorities between expressions
+// Precedence to enable priorities between operators
 // Example: this OR that AND some (AND should have a higher priority)
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum Precedence {
@@ -40,7 +40,12 @@ impl Precedence {
             Token::Plus | Token::And | Token::WordOrPhrase(..) => Self::And,
             Token::Or => Self::Or,
             Token::LeftParen => Self::Group,
-            Token::Contains | Token::Starts | Token::Inflection => Self::Statement,
+            Token::Contains
+            | Token::Starts
+            | Token::Inflection
+            | Token::Thesaurus
+            | Token::Near
+            | Token::Weighted => Self::Statement,
             _ => Self::Lowest,
         }
     }
