@@ -14,7 +14,7 @@ const TOP_ROWS: u64 = 5;
 // Output: string (sql statement)
 pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     let mut generator = Generator::new(ast.iter());
-    // write twice to overwrite initial EoF tokens
+    // write twice to overwrite initial EoF statements
     generator.write();
     generator.write();
     let mut sql_parts: Vec<String> = Vec::new();
@@ -30,7 +30,7 @@ pub fn generate(ast: Vec<Statement>) -> Result<String, GenerateError> {
     Ok(sql_parts.join(" "))
 }
 
-// Generator struct with current and next token as attributes
+// Generator struct with current and next statements as attributes
 struct Generator<'p> {
     statements: Iter<'p, Statement>,
     current: Statement,
