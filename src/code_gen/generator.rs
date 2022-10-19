@@ -5,7 +5,7 @@ use crate::code_gen::ast::{Expression, Operator, Statement};
 
 // Database constants
 const DB_NAME: &str = "Wikipedia";
-const TBL_NAME: &str = "[dbo].[Real_Article]";
+const TBL_NAME: &str = "[dbo].[Article]";
 const RETURN_ATTRIBUTE: &str = "Title";
 const TOP_ROWS: u64 = 5;
 
